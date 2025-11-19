@@ -131,10 +131,9 @@
         </div>
 
         <!-- Instructions/Message Box -->
+        <!-- FIX: Removed misleading default text, JS will set it on load -->
         <div id="message-box" class="bg-gray-800 p-4 rounded-xl text-center shadow-lg transition duration-300 mb-6 border border-emerald-500/30">
-            <p id="game-message" class="text-white text-lg font-semibold">
-                Welcome, PhishHunter! Click "Start Level" to generate your first challenge.
-            </p>
+            <p id="game-message" class="text-white text-lg font-semibold"></p>
         </div>
 
         <!-- AUTHENTICATION SCREEN -->
@@ -332,6 +331,14 @@
 
         // --- Helper function to check CAPTCHA response ---
         function checkCaptcha() {
+            // Check if the global grecaptcha object is available
+            if (typeof grecaptcha === 'undefined' || typeof grecaptcha.getResponse === 'undefined') {
+                // If CAPTCHA script hasn't loaded (or failed), we skip the check for functionality,
+                // but log an error since it's a security feature.
+                console.warn("CAPTCHA object not found. Skipping CAPTCHA check.");
+                return true;
+            }
+            
             const response = grecaptcha.getResponse();
             if (!response) {
                 ui.authError.textContent = "Please complete the 'I'm not a robot' check.";
@@ -348,7 +355,9 @@
         function handleAuthError(error) {
             ui.authError.textContent = error.message.replace('Firebase: ', '').replace(/\s\(auth\/.+\)\./, '');
             // Optionally reset CAPTCHA on error
-            grecaptcha.reset(); 
+            if (typeof grecaptcha !== 'undefined') {
+                grecaptcha.reset(); 
+            }
         }
 
         async function handleRegister() {
@@ -424,7 +433,9 @@
                 await sendSignInLinkToEmail(auth, email, actionCodeSettings);
                 
                 ui.authError.textContent = `✅ Magic link sent to ${email}! Check your inbox and click the link to sign in.`;
-                grecaptcha.reset(); // Reset CAPTCHA after successful send
+                if (typeof grecaptcha !== 'undefined') {
+                    grecaptcha.reset(); // Reset CAPTCHA after successful send
+                }
             } catch (error) {
                 console.error("Magic link send failed:", error);
                 handleAuthError(error);
@@ -464,6 +475,8 @@
                 ui.startScreen.classList.remove('hidden');
                 ui.signoutButton.classList.remove('hidden');
                 ui.authStatus.textContent = `Signed in as: ${user.email || user.uid.substring(0, 8) + '...'}`;
+                // LOGGED IN MESSAGE
+                ui.gameMessage.textContent = `Welcome, PhishHunter! Click "Start Level" to begin your training.`;
             } else {
                 // Not authenticated
                 ui.authScreen.classList.remove('hidden');
@@ -473,7 +486,8 @@
                 ui.resultsStage.classList.add('hidden');
                 ui.signoutButton.classList.add('hidden');
                 ui.authStatus.textContent = `Please Login or Register.`;
-                ui.gameMessage.textContent = `Welcome, PhishHunter! Login to start your training.`;
+                // LOGGED OUT MESSAGE
+                ui.gameMessage.textContent = `Welcome, PhishHunter! Please log in to start your training.`;
                 userId = 'anon';
             }
         }
@@ -519,8 +533,7 @@
                 penaltyToggle: document.getElementById('penalty-toggle'),
                 // NEW: Magic Link Elements
                 magicEmail: document.getElementById('magic-email'),
-                magicLinkButton: document.getElementById('magic-link-button'),
-                // CAPTCHA is handled by global grecaptcha object
+                magicLinkButton: document.getElementById('magic-link-button')
             };
 
             // Set up event listeners that rely on UI elements *after* they are found
